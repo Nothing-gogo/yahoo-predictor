@@ -3,19 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>奇摩出獎預測系統 V4.4 數位時鐘版</title>
+    <title>奇摩出獎預測系統 V4.5 視覺優化版</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #6f42c1; --secondary: #e83e8c; --bg: #f4f7f6; --clock-bg: #2c3e50; }
-        body { font-family: 'Segoe UI', -apple-system, sans-serif; background-color: var(--bg); margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        :root { --primary: #6f42c1; --secondary: #e83e8c; --bg: #f4f7f6; --clock-green: #166534; --clock-bg: #f0fdf4; }
+        body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", sans-serif; background-color: var(--bg); margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); }
         h1 { color: var(--primary); margin: 0 0 15px 0; text-align: center; font-size: 1.8em; }
         
-        /* 數位電子時鐘樣式 */
-        .clock-bar { background: var(--clock-bg); color: #00ff00; padding: 15px; border-radius: 8px; text-align: center; font-family: 'Courier New', Courier, monospace; margin-bottom: 20px; border: 2px solid #1a252f; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
-        #digital-clock { font-size: 1.8em; font-weight: bold; letter-spacing: 2px; }
-        .clock-label { color: #aaa; font-size: 0.8em; margin-bottom: 5px; text-transform: uppercase; display: block; }
+        /* 數位時鐘優化：改為淺綠風格，字體與版面一致 */
+        .clock-bar { background: var(--clock-bg); color: var(--clock-green); padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 25px; border: 1px solid #dcfce7; border-left: 6px solid #22c55e; }
+        #digital-clock { font-size: 1.8em; font-weight: 700; letter-spacing: 1px; }
+        .clock-label { color: #3f6212; font-size: 0.9em; font-weight: bold; margin-bottom: 4px; display: block; opacity: 0.8; }
 
+        /* 今日預測大字卡片 */
         .prediction-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px; }
         .card { background: #f8f9fa; border: 1px solid #eee; border-top: 5px solid var(--primary); padding: 20px; border-radius: 10px; text-align: center; transition: transform 0.2s; }
         .card:hover { transform: translateY(-5px); }
@@ -33,17 +34,17 @@
         td { padding: 10px; text-align: center; border-bottom: 1px solid #eee; }
 
         .chart-container { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; height: 40vh; min-height: 350px; max-height: 450px; position: relative; }
-        select { padding: 10px 15px; border-radius: 6px; border: 2px solid var(--primary); font-size: 1em; background: white; cursor: pointer; }
+        select { padding: 10px 15px; border-radius: 6px; border: 2px solid var(--primary); font-size: 1em; background: white; cursor: pointer; outline: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>奇摩出獎預測分析系統 V4.4</h1>
+    <h1>奇摩出獎預測分析系統 V4.5</h1>
     
     <div class="clock-bar">
-        <span class="clock-label">中原標準時間 (CST)</span>
-        <div id="digital-clock">載入時間中...</div>
+        <span class="clock-label">中原標準時間 (CST) — 實時同步中</span>
+        <div id="digital-clock">載入中...</div>
     </div>
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -51,7 +52,7 @@
         <select id="session-selector" onchange="switchSession()"></select>
     </div>
 
-    <div class="session-box" id="session-detail">載入中...</div>
+    <div class="session-box" id="session-detail">正在獲取雲端資料...</div>
 
     <h2 id="predict-title">🎯 今日預測</h2>
     <div class="prediction-grid" id="prediction-results"></div>
@@ -70,7 +71,7 @@
 </div>
 
 <script>
-    // --- 數位電子時鐘邏輯 ---
+    // --- 電子時鐘功能 ---
     function updateClock() {
         const now = new Date();
         const y = now.getFullYear();
@@ -80,14 +81,12 @@
         const mm = String(now.getMinutes()).padStart(2, '0');
         const ss = String(now.getSeconds()).padStart(2, '0');
         
-        const timeString = `西元 ${y}年${m}月${d}日 ${hh}:${mm}:${ss}`;
-        document.getElementById('digital-clock').innerText = timeString;
+        document.getElementById('digital-clock').innerText = `西元 ${y}年${m}月${d}日 ${hh}:${mm}:${ss}`;
     }
-    // 每 1000 毫秒 (1秒) 更新一次
     setInterval(updateClock, 1000);
-    updateClock(); // 立即執行一次避免延遲
+    updateClock();
 
-    // --- 數據處理邏輯 ---
+    // --- 數據同步與預測邏輯 ---
     let rawUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS78ynlSp6RiZrbuy2xrepY_o8okgD2XygL6MqXTxpdY1crYWb4YemjrEdMUDfapv11FU0oiPaNWSKB/pubhtml';
     const CSV_URL = rawUrl.replace('/pubhtml', '/pub?output=csv');
 
@@ -132,7 +131,7 @@
 
             updateDashboard();
         } catch (e) {
-            console.error("CSV載入失敗", e);
+            console.error("無法同步雲端數據");
         }
     }
 
@@ -140,7 +139,6 @@
         const filtered = fullData.filter(d => d.session === currentSession);
         if (filtered.length === 0) return;
 
-        // 更新預測標題
         const now = new Date();
         document.getElementById('predict-title').innerText = `🎯 今日預測（${now.getMonth() + 1}/${now.getDate()}）`;
 
@@ -149,7 +147,7 @@
             <strong>活動名稱：</strong> ${meta.name}<br>
             <strong>開始時間：</strong> ${meta.startFull}<br>
             <strong>結束時間：</strong> ${meta.endFull}<br>
-            <strong>快速連結：</strong> <a href="${meta.link}" target="_blank">進入抽獎</a> | <a href="${meta.history}" target="_blank">歷史紀錄</a>
+            <strong>快速連結：</strong> <a href="${meta.link}" target="_blank">進入抽獎網頁</a> | <a href="${meta.history}" target="_blank">中獎紀錄查詢</a>
         `;
 
         const times = filtered.map(item => item.time);
@@ -161,9 +159,9 @@
         trend = Math.max(10, Math.min(23, trend)); 
 
         const preds = [
-            { t: trend, n: "趨勢波段", p: "45%", d: "分析全月升降幅之動態回調" },
-            { t: avg, n: "均值回歸", p: "30%", d: "依據全月出獎歷史平均錨點" },
-            { t: 20, n: "週期慣性", p: "25%", d: "系統保底時段與週末歷史熱區" }
+            { t: trend, n: "趨勢波段", p: "45%", d: "基於近期波動幅度的反轉推估" },
+            { t: avg, n: "均值回歸", p: "30%", d: "依據全月數據計算之平均平衡點" },
+            { t: 20, n: "週期慣性", p: "25%", d: "參考週末規律與系統保底設定時段" }
         ];
 
         document.getElementById('prediction-results').innerHTML = preds.map(p => `
@@ -197,14 +195,15 @@
                     tension: 0.3,
                     fill: false,
                     pointRadius: 5,
-                    pointBackgroundColor: '#e83e8c'
+                    pointBackgroundColor: '#e83e8c',
+                    pointBorderColor: '#fff'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: { 
-                    y: { min: 8, max: 24, ticks: { stepSize: 4 } },
+                    y: { min: 8, max: 24, ticks: { stepSize: 4, font: { weight: 'bold' } } },
                     x: { ticks: { font: { size: 10 } } }
                 },
                 plugins: { legend: { display: false } }

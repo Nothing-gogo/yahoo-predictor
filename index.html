@@ -90,7 +90,7 @@
                     session: cols[0]?.trim(), 
                     date: cols[1]?.trim(), 
                     time: parseInt(cols[2]),
-                    sheetTime: cols[4]?.trim() // 讀取 E 欄的 =NOW()
+                    sheetTime: cols[4]?.trim() // 讀取 D 欄的 =NOW()
                 };
             }).filter(d => !isNaN(d.time));
 

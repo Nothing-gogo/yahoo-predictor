@@ -3,16 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>奇摩出獎預測系統 V4.3</title>
+    <title>奇摩出獎預測系統 V4.4 數位時鐘版</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #6f42c1; --secondary: #e83e8c; --bg: #f4f7f6; }
+        :root { --primary: #6f42c1; --secondary: #e83e8c; --bg: #f4f7f6; --clock-bg: #2c3e50; }
         body { font-family: 'Segoe UI', -apple-system, sans-serif; background-color: var(--bg); margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
         h1 { color: var(--primary); margin: 0 0 15px 0; text-align: center; font-size: 1.8em; }
         
-        /* 狀態列：顯示 Google 表單真實時間 */
-        .status-bar { background: #d4edda; padding: 12px; border-radius: 6px; text-align: center; font-size: 1em; margin-bottom: 20px; border: 1px solid #c3e6cb; color: #155724; font-weight: bold; }
+        /* 數位電子時鐘樣式 */
+        .clock-bar { background: var(--clock-bg); color: #00ff00; padding: 15px; border-radius: 8px; text-align: center; font-family: 'Courier New', Courier, monospace; margin-bottom: 20px; border: 2px solid #1a252f; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        #digital-clock { font-size: 1.8em; font-weight: bold; letter-spacing: 2px; }
+        .clock-label { color: #aaa; font-size: 0.8em; margin-bottom: 5px; text-transform: uppercase; display: block; }
 
         .prediction-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px; }
         .card { background: #f8f9fa; border: 1px solid #eee; border-top: 5px solid var(--primary); padding: 20px; border-radius: 10px; text-align: center; transition: transform 0.2s; }
@@ -37,8 +39,12 @@
 <body>
 
 <div class="container">
-    <h1>奇摩出獎預測分析系統 V4.3</h1>
-    <div id="status" class="status-bar">📊 正在同步 Google 表單數據...</div>
+    <h1>奇摩出獎預測分析系統 V4.4</h1>
+    
+    <div class="clock-bar">
+        <span class="clock-label">中原標準時間 (CST)</span>
+        <div id="digital-clock">載入時間中...</div>
+    </div>
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <h2 style="margin:0;">📅 檔期資訊</h2>
@@ -64,6 +70,24 @@
 </div>
 
 <script>
+    // --- 數位電子時鐘邏輯 ---
+    function updateClock() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        
+        const timeString = `西元 ${y}年${m}月${d}日 ${hh}:${mm}:${ss}`;
+        document.getElementById('digital-clock').innerText = timeString;
+    }
+    // 每 1000 毫秒 (1秒) 更新一次
+    setInterval(updateClock, 1000);
+    updateClock(); // 立即執行一次避免延遲
+
+    // --- 數據處理邏輯 ---
     let rawUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS78ynlSp6RiZrbuy2xrepY_o8okgD2XygL6MqXTxpdY1crYWb4YemjrEdMUDfapv11FU0oiPaNWSKB/pubhtml';
     const CSV_URL = rawUrl.replace('/pubhtml', '/pub?output=csv');
 
@@ -84,7 +108,6 @@
 
     async function init() {
         try {
-            // 加入隨機參數防止快取
             const response = await fetch(CSV_URL + '&t=' + new Date().getTime());
             const text = await response.text();
             const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
@@ -94,19 +117,9 @@
                 return { 
                     session: cols[0]?.replace(/"/g, '').trim(), 
                     date: cols[1]?.replace(/"/g, '').trim(), 
-                    time: parseInt(cols[2]),
-                    sheetTime: cols[3]?.replace(/"/g, '').trim() // 這裡是 D 欄
+                    time: parseInt(cols[2])
                 };
             }).filter(d => !isNaN(d.time));
-
-            // --- 關鍵修正：精準抓取 D2 (全表單第一個資料列的 D 欄) ---
-            let sheetLastUpdate = "無有效數據";
-            if (fullData.length > 0) {
-                // 直接抓取第一筆資料的 sheetTime，因為您在 D2 寫了 =NOW()
-                // CSV 轉換後，D2 的值會存在 fullData[0].sheetTime
-                sheetLastUpdate = fullData[0].sheetTime || "格式不正確";
-            }
-            document.getElementById('status').innerText = `✅ 表單最後更新：${sheetLastUpdate}`;
 
             const sessions = [...new Set(fullData.map(d => d.session))];
             currentSession = sessions[sessions.length - 1]; 
@@ -119,7 +132,7 @@
 
             updateDashboard();
         } catch (e) {
-            document.getElementById('status').innerText = "❌ 無法聯繫 Google 表單，請檢查網路或發布網址。";
+            console.error("CSV載入失敗", e);
         }
     }
 
@@ -127,6 +140,7 @@
         const filtered = fullData.filter(d => d.session === currentSession);
         if (filtered.length === 0) return;
 
+        // 更新預測標題
         const now = new Date();
         document.getElementById('predict-title').innerText = `🎯 今日預測（${now.getMonth() + 1}/${now.getDate()}）`;
 
@@ -135,7 +149,7 @@
             <strong>活動名稱：</strong> ${meta.name}<br>
             <strong>開始時間：</strong> ${meta.startFull}<br>
             <strong>結束時間：</strong> ${meta.endFull}<br>
-            <strong>快速連結：</strong> <a href="${meta.link}" target="_blank">進入抽獎</a> | <a href="${meta.history}" target="_blank">中獎歷史</a>
+            <strong>快速連結：</strong> <a href="${meta.link}" target="_blank">進入抽獎</a> | <a href="${meta.history}" target="_blank">歷史紀錄</a>
         `;
 
         const times = filtered.map(item => item.time);

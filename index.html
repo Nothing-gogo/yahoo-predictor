@@ -3,41 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>奇摩出獎預測系統 V3.6</title>
+    <title>奇摩出獎預測系統 V3.7</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #6f42c1; --secondary: #e83e8c; --bg: #f4f7f6; }
         body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        
         h1 { color: var(--primary); margin: 0 0 15px 0; text-align: center; font-size: 1.8em; }
-        .status-bar { background: #fff3cd; padding: 10px; border-radius: 5px; text-align: center; font-size: 0.9em; margin-bottom: 15px; border: 1px solid #ffeeba; color: #856404; font-weight: bold; }
-
+        .status-bar { background: #fff3cd; padding: 10px; border-radius: 5px; text-align: center; font-size: 0.95em; margin-bottom: 15px; border: 1px solid #ffeeba; color: #856404; font-weight: bold; }
         .top-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 15px; margin-bottom: 20px; }
         .session-box { background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 5px solid var(--primary); }
         .prediction-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .card { background: #fff; border: 1px solid #eee; border-top: 4px solid var(--secondary); padding: 10px; text-align: center; border-radius: 6px; }
         .time-label { font-size: 0.75em; color: #777; }
         .time-display { font-size: 1.6em; font-weight: bold; color: var(--secondary); }
-
         .table-wrapper { max-height: 180px; overflow-y: auto; border: 1px solid #eee; margin-bottom: 15px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
         th { background: var(--primary); color: white; position: sticky; top: 0; padding: 8px; }
         td { padding: 6px; text-align: center; border-bottom: 1px solid #eee; }
-
-        .chart-container { 
-            background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 10px; 
-            height: 40vh; min-height: 300px; max-height: 400px; position: relative; 
-        }
-        
-        select { width: 100%; padding: 10px; margin-top: 10px; border-radius: 4px; border: 1px solid var(--primary); font-size: 1em; cursor: pointer; }
+        .chart-container { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 10px; height: 40vh; min-height: 300px; max-height: 400px; position: relative; }
+        select { width: 100%; padding: 10px; margin-top: 10px; border-radius: 4px; border: 1px solid var(--primary); font-size: 1em; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>奇摩出獎預測分析 V3.6</h1>
-    <div id="status" class="status-bar">📝最後更新時間：讀取中...</div>
+    <h1>奇摩出獎預測分析 V3.7</h1>
+    <div id="status" class="status-bar">📝最後更新時間：正在聯繫 Google 表格...</div>
 
     <div class="top-grid">
         <div class="session-box">
@@ -61,9 +53,9 @@
 </div>
 
 <script>
-    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS78ynlSp6RiZrbuy2xrepY_o8okgD2XygL6MqXTxpdY1crYWb4YemjrEdMUDfapv11FU0oiPaNWSKB/pub?output=csv'; 
+    // 請確認這段網址結尾是 output=csv
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSmN6L-O98MscCjXm6p8Y2mZ0Wz7-D6n_298Z-E_XF9n_vL9-w7p9_n/pub?output=csv'; 
 
-    // 檔期元資料：請在此維護各檔期的詳細時間
     const sessionMeta = {
         "春日禮": {
             name: "【春日禮❤️可抽5次】麥當勞、必勝客、City Cafe等多重驚喜",
@@ -81,19 +73,33 @@
 
     async function init() {
         try {
-            const response = await fetch(CSV_URL);
+            // 防止瀏覽器快取，加上隨機參數
+            const response = await fetch(CSV_URL + '&t=' + new Date().getTime());
             const data = await response.text();
-            const rows = data.split('\n').slice(1);
             
-            fullData = rows.map(row => {
+            // 使用正規表達式處理 CSV，防止逗號解析錯誤
+            const rows = data.split(/\r?\n/).filter(row => row.trim() !== "");
+            const headers = rows[0].split(',');
+            
+            fullData = rows.slice(1).map(row => {
                 const cols = row.split(',');
                 return { 
-                    session: cols[0]?.trim(), 
-                    date: cols[1]?.trim(), 
+                    session: cols[0]?.replace(/"/g, '').trim(), 
+                    date: cols[1]?.replace(/"/g, '').trim(), 
                     time: parseInt(cols[2]),
-                    sheetTime: cols[3]?.trim() // 修正索引：現在讀取 D 欄 (索引 3)
+                    sheetTime: cols[3]?.replace(/"/g, '').trim() // D欄
                 };
             }).filter(d => !isNaN(d.time));
+
+            // --- 強化：找出全文件最後一個有效的更新時間 ---
+            let latestTime = "無有效數據";
+            for (let i = fullData.length - 1; i >= 0; i--) {
+                if (fullData[i].sheetTime && fullData[i].sheetTime !== "" && fullData[i].sheetTime !== "last_mod") {
+                    latestTime = fullData[i].sheetTime;
+                    break;
+                }
+            }
+            document.getElementById('status').innerText = `📝最後更新時間：${latestTime}`;
 
             const sessions = [...new Set(fullData.map(d => d.session))];
             currentSession = sessions[sessions.length - 1]; 
@@ -106,7 +112,8 @@
 
             updateDashboard();
         } catch (e) {
-            document.getElementById('status').innerText = "連線失敗，請檢查 CSV 是否正確發布。";
+            document.getElementById('status').innerText = "❌ 無法讀取數據。請檢查 CSV 連結是否正確。";
+            console.error(e);
         }
     }
 
@@ -114,19 +121,13 @@
         const filtered = fullData.filter(d => d.session === currentSession);
         if (filtered.length === 0) return;
 
-        // 1. 更新最後更新時間 (讀取 D 欄)
-        const lastModTime = fullData[fullData.length - 1].sheetTime || "無數據";
-        document.getElementById('status').innerText = `📝最後更新時間：${lastModTime}`;
-
-        // 2. 更新詳細資訊
         const meta = sessionMeta[currentSession] || { name: currentSession, startFull: "-", link: "#", history: "#" };
         document.getElementById('session-detail').innerHTML = `
             <strong>活動名稱：</strong> ${meta.name}<br>
             <strong>開始時間：</strong> ${meta.startFull}<br>
-            <strong>快速連結：</strong> <a href="${meta.link}" target="_blank">抽獎網頁</a> | <a href="${meta.history}" target="_blank">紀錄查詢</a>
+            <strong>快速連結：</strong> <a href="${meta.link}" target="_blank">抽獎頁</a> | <a href="${meta.history}" target="_blank">紀錄</a>
         `;
 
-        // 3. 預測計算
         const last = filtered[filtered.length - 1].time;
         const prev = filtered[filtered.length - 2]?.time || last;
         const avg = Math.round(filtered.reduce((a,b)=>a+b.time,0)/filtered.length);
@@ -138,7 +139,6 @@
             <div class="card"><div class="time-label">慣性推薦</div><div class="time-display">20:00</div></div>
         `;
 
-        // 4. 表格渲染
         document.getElementById('data-table').innerHTML = filtered.slice().reverse().map(d => `
             <tr><td>${d.date}</td><td>${d.time} 點</td><td>${d.session}</td></tr>
         `).join('');
@@ -154,7 +154,7 @@
             data: {
                 labels: data.map(d => d.date),
                 datasets: [{
-                    label: '出獎時間',
+                    label: '時間點',
                     data: data.map(d => d.time),
                     borderColor: '#6f42c1',
                     borderWidth: 2,
@@ -167,9 +167,7 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: {
-                    y: { min: 8, max: 24, ticks: { stepSize: 4 } }
-                },
+                scales: { y: { min: 8, max: 24, ticks: { stepSize: 4 } } },
                 plugins: { legend: { display: false } }
             }
         });

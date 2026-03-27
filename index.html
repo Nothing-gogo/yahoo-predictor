@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>奇摩出獎預測系統 V3.5</title>
+    <title>奇摩出獎預測系統 V3.6</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #6f42c1; --secondary: #e83e8c; --bg: #f4f7f6; }
@@ -11,9 +11,8 @@
         .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         
         h1 { color: var(--primary); margin: 0 0 15px 0; text-align: center; font-size: 1.8em; }
-        .status-bar { background: #e7f3ff; padding: 8px; border-radius: 5px; text-align: center; font-size: 0.85em; margin-bottom: 15px; border: 1px solid #b3d7ff; color: #004085; }
+        .status-bar { background: #fff3cd; padding: 10px; border-radius: 5px; text-align: center; font-size: 0.9em; margin-bottom: 15px; border: 1px solid #ffeeba; color: #856404; font-weight: bold; }
 
-        /* 檔期與預測區 */
         .top-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 15px; margin-bottom: 20px; }
         .session-box { background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 5px solid var(--primary); }
         .prediction-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -21,32 +20,30 @@
         .time-label { font-size: 0.75em; color: #777; }
         .time-display { font-size: 1.6em; font-weight: bold; color: var(--secondary); }
 
-        /* 表格區 (限高) */
         .table-wrapper { max-height: 180px; overflow-y: auto; border: 1px solid #eee; margin-bottom: 15px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
         th { background: var(--primary); color: white; position: sticky; top: 0; padding: 8px; }
         td { padding: 6px; text-align: center; border-bottom: 1px solid #eee; }
 
-        /* 圖表區：高度鎖定螢幕 40% */
         .chart-container { 
             background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 10px; 
             height: 40vh; min-height: 300px; max-height: 400px; position: relative; 
         }
         
-        select { width: 100%; padding: 8px; margin-top: 10px; border-radius: 4px; border: 1px solid var(--primary); }
+        select { width: 100%; padding: 10px; margin-top: 10px; border-radius: 4px; border: 1px solid var(--primary); font-size: 1em; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>奇摩出獎預測分析 V3.5</h1>
-    <div id="status" class="status-bar">正在讀取表單最後修改日期...</div>
+    <h1>奇摩出獎預測分析 V3.6</h1>
+    <div id="status" class="status-bar">📝最後更新時間：讀取中...</div>
 
     <div class="top-grid">
         <div class="session-box">
             <label><strong>切換活動檔期：</strong></label>
             <select id="session-selector" onchange="switchSession()"></select>
-            <div id="session-detail" style="margin-top:10px; font-size:0.8em; color:#555;"></div>
+            <div id="session-detail" style="margin-top:12px; font-size:0.85em; color:#444; line-height:1.6;"></div>
         </div>
         <div class="prediction-grid" id="prediction-results"></div>
     </div>
@@ -66,9 +63,13 @@
 <script>
     const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS78ynlSp6RiZrbuy2xrepY_o8okgD2XygL6MqXTxpdY1crYWb4YemjrEdMUDfapv11FU0oiPaNWSKB/pub?output=csv'; 
 
+    // 檔期元資料：請在此維護各檔期的詳細時間
     const sessionMeta = {
         "春日禮": {
-            name: "【春日禮❤️可抽5次】麥當勞、必勝客等多重驚喜",
+            name: "【春日禮❤️可抽5次】麥當勞、必勝客、City Cafe等多重驚喜",
+            range: "3/4~3/31",
+            startFull: "2026-03-04 16:00:00",
+            endFull: "2026-03-31 23:59:59",
             link: "https://tw.yahoo.com/member/item/266443",
             history: "https://tw.yahoo.com/member/luckyDrawHistory/93206"
         }
@@ -90,19 +91,22 @@
                     session: cols[0]?.trim(), 
                     date: cols[1]?.trim(), 
                     time: parseInt(cols[2]),
-                    sheetTime: cols[4]?.trim() // 讀取 D 欄的 =NOW()
+                    sheetTime: cols[3]?.trim() // 修正索引：現在讀取 D 欄 (索引 3)
                 };
             }).filter(d => !isNaN(d.time));
 
-            // 初始化切換選單
             const sessions = [...new Set(fullData.map(d => d.session))];
-            currentSession = sessions[sessions.length - 1]; // 預設最後一個檔期
+            currentSession = sessions[sessions.length - 1]; 
+
             const selector = document.getElementById('session-selector');
-            selector.innerHTML = sessions.map(s => `<option value="${s}" ${s === currentSession ? 'selected' : ''}>${s}</option>`).join('');
+            selector.innerHTML = sessions.map(s => {
+                const range = sessionMeta[s]?.range || "";
+                return `<option value="${s}" ${s === currentSession ? 'selected' : ''}>${s}${range}</option>`;
+            }).join('');
 
             updateDashboard();
         } catch (e) {
-            document.getElementById('status').innerText = "連線失敗，請檢查 CSV 發布狀態。";
+            document.getElementById('status').innerText = "連線失敗，請檢查 CSV 是否正確發布。";
         }
     }
 
@@ -110,15 +114,16 @@
         const filtered = fullData.filter(d => d.session === currentSession);
         if (filtered.length === 0) return;
 
-        // 1. 抓取表單 D 欄提供的真實修改時間 (取最後一筆)
+        // 1. 更新最後更新時間 (讀取 D 欄)
         const lastModTime = fullData[fullData.length - 1].sheetTime || "無數據";
-        document.getElementById('status').innerText = `📅 表單最後編輯時間：${lastModTime}`;
+        document.getElementById('status').innerText = `📝最後更新時間：${lastModTime}`;
 
-        // 2. 更新檔期資訊
-        const meta = sessionMeta[currentSession] || { name: currentSession, link: "#", history: "#" };
+        // 2. 更新詳細資訊
+        const meta = sessionMeta[currentSession] || { name: currentSession, startFull: "-", link: "#", history: "#" };
         document.getElementById('session-detail').innerHTML = `
-            <strong>活動：</strong> ${meta.name}<br>
-            <a href="${meta.link}" target="_blank">抽獎頁</a> | <a href="${meta.history}" target="_blank">中獎查詢</a>
+            <strong>活動名稱：</strong> ${meta.name}<br>
+            <strong>開始時間：</strong> ${meta.startFull}<br>
+            <strong>快速連結：</strong> <a href="${meta.link}" target="_blank">抽獎網頁</a> | <a href="${meta.history}" target="_blank">紀錄查詢</a>
         `;
 
         // 3. 預測計算
@@ -128,17 +133,16 @@
         const trend = Math.max(10, Math.min(23, last + (last - prev)));
 
         document.getElementById('prediction-results').innerHTML = `
-            <div class="card"><div class="time-label">趨勢</div><div class="time-display">${trend}:00</div></div>
-            <div class="card"><div class="time-label">平均</div><div class="time-display">${avg}:00</div></div>
-            <div class="card"><div class="time-label">慣性</div><div class="time-display">20:00</div></div>
+            <div class="card"><div class="time-label">趨勢預測</div><div class="time-display">${trend}:00</div></div>
+            <div class="card"><div class="time-label">平均參考</div><div class="time-display">${avg}:00</div></div>
+            <div class="card"><div class="time-label">慣性推薦</div><div class="time-display">20:00</div></div>
         `;
 
-        // 4. 表格渲染 (最新排前面)
+        // 4. 表格渲染
         document.getElementById('data-table').innerHTML = filtered.slice().reverse().map(d => `
             <tr><td>${d.date}</td><td>${d.time} 點</td><td>${d.session}</td></tr>
         `).join('');
 
-        // 5. 圖表渲染
         renderChart(filtered);
     }
 
@@ -156,7 +160,8 @@
                     borderWidth: 2,
                     tension: 0.2,
                     fill: false,
-                    pointRadius: 3
+                    pointRadius: 4,
+                    pointBackgroundColor: '#e83e8c'
                 }]
             },
             options: {

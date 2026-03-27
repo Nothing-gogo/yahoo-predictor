@@ -3,54 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>奇摩出獎預測系統 V3.2</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>奇摩出獎預測系統 (穩定回歸版)</title>
     <style>
         :root { --primary: #6f42c1; --secondary: #e83e8c; --bg: #f8f9fa; }
-        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: #333; max-width: 900px; margin: 0 auto; padding: 15px; }
+        body { font-family: 'Segoe UI', -apple-system, sans-serif; background-color: var(--bg); color: #333; max-width: 800px; margin: 0 auto; padding: 15px; }
         .container { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h1, h2 { color: var(--primary); text-align: center; margin-bottom: 15px; }
         
+        /* 頂部狀態與資訊 */
         .status-bar { background: #e7f3ff; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.85em; text-align: center; border: 1px solid #b3d7ff; color: #004085; }
-        .session-info { background: #f1f0ff; border-left: 5px solid var(--primary); padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 0.85em; }
+        .session-info { background: #f1f0ff; border-left: 5px solid var(--primary); padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 0.85em; line-height: 1.6; }
         .session-info a { color: var(--secondary); text-decoration: none; font-weight: bold; }
 
-        /* 預測卡片 */
-        .prediction-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-bottom: 25px; }
+        /* 預測卡片 - 保持簡潔 */
+        .prediction-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 25px; }
         .card { background: #fff; border: 1px solid #eee; border-top: 4px solid var(--primary); padding: 15px; border-radius: 8px; text-align: center; }
-        .time-display { font-size: 2em; font-weight: bold; color: var(--secondary); margin: 5px 0; }
+        .card-label { font-size: 0.75em; color: #888; }
+        .time-display { font-size: 1.8em; font-weight: bold; color: var(--secondary); margin: 5px 0; }
 
-        /* 數據表格區 */
-        .table-wrapper { max-height: 250px; overflow-y: auto; border: 1px solid #eee; margin-bottom: 25px; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
-        th { background: var(--primary); color: white; position: sticky; top: 0; padding: 8px; }
-        td { padding: 6px; text-align: center; border-bottom: 1px solid #eee; }
-
-        /* 圖表區優化：給予固定高度防止無限拉長 */
-        .chart-container { 
-            position: relative; 
-            height: 350px; /* 關鍵：強制限制高度 */
-            width: 100%; 
-            margin-top: 10px;
-            padding: 10px;
-            background: #fff;
-            border-radius: 8px;
-            border: 1px solid #eee;
-            box-sizing: border-box;
-        }
+        /* 歷史表格 - 最新日期排最前 */
+        .table-wrapper { border: 1px solid #eee; border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        th { background: var(--primary); color: white; padding: 10px; }
+        td { padding: 10px; text-align: center; border-bottom: 1px solid #eee; }
+        tr:nth-child(even) { background-color: #fafafa; }
         
-        select { padding: 6px; border-radius: 4px; border: 1px solid var(--primary); margin-bottom: 10px; }
+        select { padding: 8px; border-radius: 5px; border: 1px solid var(--primary); background: #fff; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>奇摩出獎預測 V3.2</h1>
+    <h1>奇摩出獎預測 V3.3</h1>
     
-    <div id="status" class="status-bar">數據讀取中...</div>
+    <div id="status" class="status-bar">數據連線中...</div>
 
-    <div style="text-align: right; margin-bottom: 10px;">
-        <label style="font-size: 0.9em;">檔期：</label>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div class="session-label">當前檔期：</div>
         <select id="session-selector" onchange="switchSession()"></select>
     </div>
 
@@ -59,31 +48,34 @@
     <h2>🎯 預測分析</h2>
     <div class="prediction-grid" id="prediction-results"></div>
 
-    <h2>📊 歷史追蹤 (最新優先)</h2>
+    <h2>📊 歷史數據追蹤</h2>
     <div class="table-wrapper">
         <table>
-            <thead><tr><th>日期</th><th>時間</th><th>檔期</th></tr></thead>
-            <tbody id="data-table"></tbody>
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>出獎時間</th>
+                </tr>
+            </thead>
+            <tbody id="data-table">
+                </tbody>
         </table>
     </div>
 
-    <h2>📈 趨勢分佈圖</h2>
-    <div class="chart-container">
-        <canvas id="trendChart"></canvas>
-    </div>
-
     <p style="text-align: center; font-size: 0.75em; color: #999; margin-top: 20px;">
-        數據即時運算，僅供決策參考。
+        * 本程式採用純淨代碼開發，確保手機瀏覽流暢不閃退。
     </p>
 </div>
 
 <script>
+    // --- 這裡放入你的 CSV 網址 ---
     const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS78ynlSp6RiZrbuy2xrepY_o8okgD2XygL6MqXTxpdY1crYWb4YemjrEdMUDfapv11FU0oiPaNWSKB/pub?output=csv'; 
 
     const sessionMeta = {
         "春日禮": {
-            name: "【春日禮❤️可抽5次】麥當勞、必勝客等多重驚喜",
-            start: "2026-03-04", end: "2026-03-31",
+            name: "【春日禮❤️可抽5次】麥當勞、必勝客、City Cafe等多重驚喜",
+            start: "2026-03-04",
+            end: "2026-03-31",
             link: "https://tw.yahoo.com/member/item/266443",
             history: "https://tw.yahoo.com/member/luckyDrawHistory/93206"
         }
@@ -91,95 +83,82 @@
 
     let fullData = [];
     let currentSession = "春日禮";
-    let trendChart = null;
+
+    // 取得當前時間字串
+    function getSyncTime() {
+        const now = new Date();
+        return `${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+    }
 
     async function init() {
         try {
             const response = await fetch(CSV_URL);
             const data = await response.text();
             const rows = data.split('\n').slice(1);
+            
             fullData = rows.map(row => {
                 const cols = row.split(',');
-                return { session: cols[0]?.trim(), date: cols[1]?.trim(), time: parseInt(cols[2]) };
+                return {
+                    session: cols[0]?.trim() || "未命名",
+                    date: cols[1]?.trim(),
+                    time: parseInt(cols[2])
+                };
             }).filter(d => !isNaN(d.time));
 
+            // 更新選擇器
             const sessions = [...new Set(fullData.map(d => d.session))];
-            document.getElementById('session-selector').innerHTML = sessions.map(s => `<option value="${s}">${s}</option>`).join('');
+            const selector = document.getElementById('session-selector');
+            selector.innerHTML = sessions.map(s => `<option value="${s}" ${s === currentSession ? 'selected' : ''}>${s}</option>`).join('');
+
             updateDashboard();
         } catch (e) {
-            document.getElementById('status').innerText = "連線失敗，請檢查網址。";
+            document.getElementById('status').innerText = "連線失敗，請確認 Google 表格發布狀態。";
         }
     }
 
     function updateDashboard() {
         const filtered = fullData.filter(d => d.session === currentSession);
-        if (!filtered.length) return;
+        if (filtered.length === 0) return;
 
-        const now = new Date();
-        document.getElementById('status').innerText = `✅ 已同步：${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+        // 更新狀態
+        document.getElementById('status').innerText = `✅ 雲端同步成功 | 時間：${getSyncTime()}`;
 
+        // 更新檔期詳細資訊
         const meta = sessionMeta[currentSession] || { name: currentSession, start: "-", end: "-", link: "#", history: "#" };
         document.getElementById('session-detail').innerHTML = `
-            <strong>${meta.name}</strong><br>
-            連結：<a href="${meta.link}" target="_blank">抽獎</a> | <a href="${meta.history}" target="_blank">紀錄</a>
+            <strong>活動：</strong> ${meta.name}<br>
+            <strong>日期：</strong> ${meta.start} ~ ${meta.end}<br>
+            <strong>連結：</strong> <a href="${meta.link}" target="_blank">抽獎網頁</a> | <a href="${meta.history}" target="_blank">得獎查詢</a>
         `;
 
-        renderPredictions(filtered);
-        document.getElementById('data-table').innerHTML = filtered.slice().reverse().map(d => `
-            <tr><td>${d.date}</td><td>${d.time} 點</td><td>${d.session}</td></tr>
-        `).join('');
-
-        renderChart(filtered);
-    }
-
-    function renderPredictions(data) {
-        const times = data.map(d => d.time);
+        // 渲染預測 (邏輯保持：趨勢、均值、慣性)
+        const times = filtered.map(d => d.time);
         const last = times[times.length - 1];
-        const prev = times[times.length - 2];
+        const prev = times[times.length - 2] || last;
         const avg = Math.round(times.reduce((a,b)=>a+b,0)/times.length);
         const trend = Math.max(10, Math.min(23, last + (last - prev)));
 
         const preds = [
-            { t: trend, n: "趨勢", p: "45%" },
-            { t: avg, n: "平均", p: "30%" },
-            { t: 20, n: "慣性", p: "25%" }
+            { t: trend, n: "趨勢推算", p: "45%" },
+            { t: avg, n: "全期均值", p: "30%" },
+            { t: 20, n: "高峰慣性", p: "25%" }
         ];
 
         document.getElementById('prediction-results').innerHTML = preds.map(p => `
             <div class="card">
-                <div style="font-size:0.8em; color:#888;">${p.n} (機率 ${p.p})</div>
+                <div class="card-label">${p.n} (${p.p})</div>
                 <div class="time-display">${p.t}:00</div>
             </div>
         `).join('');
-    }
 
-    function renderChart(data) {
-        const ctx = document.getElementById('trendChart').getContext('2d');
-        if (trendChart) trendChart.destroy();
-        
-        trendChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: data.map(d => d.date),
-                datasets: [{
-                    label: '點數',
-                    data: data.map(d => d.time),
-                    borderColor: '#6f42c1',
-                    backgroundColor: 'rgba(111, 66, 193, 0.1)',
-                    fill: true,
-                    tension: 0.2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false, // 配合容器高度 350px
-                scales: { 
-                    y: { min: 8, max: 24, ticks: { stepSize: 4 } },
-                    x: { ticks: { maxRotation: 45, minRotation: 45, font: { size: 10 } } }
-                },
-                plugins: { legend: { display: false } }
-            }
-        });
+        // 渲染表格 (最新日期排最前)
+        const tbody = document.getElementById('data-table');
+        tbody.innerHTML = filtered.slice().reverse().map(d => `
+            <tr>
+                <td>${d.date}</td>
+                <td>${d.time} 點</td>
+            </tr>
+        `).join('');
     }
 
     function switchSession() {
@@ -187,7 +166,10 @@
         updateDashboard();
     }
 
+    // 初始化
     init();
+    // 每 5 分鐘自動刷新一次
+    setInterval(init, 300000);
 </script>
 
 </body>

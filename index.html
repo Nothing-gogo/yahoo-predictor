@@ -110,7 +110,7 @@
         const filtered = fullData.filter(d => d.session === currentSession);
         if (filtered.length === 0) return;
 
-        // 1. 抓取表單 E 欄提供的真實修改時間 (取最後一筆)
+        // 1. 抓取表單 D 欄提供的真實修改時間 (取最後一筆)
         const lastModTime = fullData[fullData.length - 1].sheetTime || "無數據";
         document.getElementById('status').innerText = `📅 表單最後編輯時間：${lastModTime}`;
 

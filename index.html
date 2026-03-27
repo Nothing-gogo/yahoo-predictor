@@ -48,4 +48,136 @@
     </div>
 
     <div class="chart-container">
-        <canvas
+        <canvas id="trendChart"></canvas>
+    </div>
+</div>
+
+<script>
+    // 自動修正網址：若使用者貼入 pubhtml，自動轉為 output=csv
+    let rawUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS78ynlSp6RiZrbuy2xrepY_o8okgD2XygL6MqXTxpdY1crYWb4YemjrEdMUDfapv11FU0oiPaNWSKB/pubhtml';
+    const CSV_URL = rawUrl.replace('/pubhtml', '/pub?output=csv');
+
+    const sessionMeta = {
+        "春日禮": {
+            name: "【春日禮❤️可抽5次】麥當勞、必勝客、City Cafe等多重驚喜",
+            range: "3/4~3/31",
+            startFull: "2026-03-04 16:00:00",
+            endFull: "2026-03-31 23:59:59",
+            link: "https://tw.yahoo.com/member/item/266443",
+            history: "https://tw.yahoo.com/member/luckyDrawHistory/93206"
+        }
+    };
+
+    let fullData = [];
+    let currentSession = "";
+    let trendChart = null;
+
+    async function init() {
+        try {
+            const response = await fetch(CSV_URL + '&t=' + new Date().getTime());
+            const text = await response.text();
+            
+            // 讀取每一列並過濾空白
+            const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
+            
+            fullData = lines.slice(1).map(line => {
+                const cols = line.split(',');
+                return { 
+                    session: cols[0]?.replace(/"/g, '').trim(), 
+                    date: cols[1]?.replace(/"/g, '').trim(), 
+                    time: parseInt(cols[2]),
+                    sheetTime: cols[3]?.replace(/"/g, '').trim() // 抓取 D 欄 (索引 3)
+                };
+            }).filter(d => !isNaN(d.time));
+
+            // --- 強化：找出所有資料中最後一個非空白的 D 欄內容 ---
+            let finalUpdate = "無有效數據";
+            for (let i = fullData.length - 1; i >= 0; i--) {
+                if (fullData[i].sheetTime && fullData[i].sheetTime.length > 5) {
+                    finalUpdate = fullData[i].sheetTime;
+                    break;
+                }
+            }
+            document.getElementById('status').innerText = `📝最後更新時間：${finalUpdate}`;
+
+            const sessions = [...new Set(fullData.map(d => d.session))];
+            currentSession = sessions[sessions.length - 1]; 
+
+            const selector = document.getElementById('session-selector');
+            selector.innerHTML = sessions.map(s => {
+                const range = sessionMeta[s]?.range || "";
+                return `<option value="${s}" ${s === currentSession ? 'selected' : ''}>${s}${range}</option>`;
+            }).join('');
+
+            updateDashboard();
+        } catch (e) {
+            document.getElementById('status').innerText = "❌ 讀取失敗。請確認試算表已「發布為 CSV」。";
+            console.error(e);
+        }
+    }
+
+    function updateDashboard() {
+        const filtered = fullData.filter(d => d.session === currentSession);
+        if (filtered.length === 0) return;
+
+        const meta = sessionMeta[currentSession] || { name: currentSession, startFull: "-", link: "#", history: "#" };
+        document.getElementById('session-detail').innerHTML = `
+            <strong>活動名稱：</strong> ${meta.name}<br>
+            <strong>開始時間：</strong> ${meta.startFull}<br>
+            <strong>快速連結：</strong> <a href="${meta.link}" target="_blank">抽獎頁</a> | <a href="${meta.history}" target="_blank">紀錄</a>
+        `;
+
+        const last = filtered[filtered.length - 1].time;
+        const prev = filtered[filtered.length - 2]?.time || last;
+        const avg = Math.round(filtered.reduce((a,b)=>a+b.time,0)/filtered.length);
+        const trend = Math.max(10, Math.min(23, last + (last - prev)));
+
+        document.getElementById('prediction-results').innerHTML = `
+            <div class="card"><div class="time-label">趨勢預測</div><div class="time-display">${trend}:00</div></div>
+            <div class="card"><div class="time-label">平均參考</div><div class="time-display">${avg}:00</div></div>
+            <div class="card"><div class="time-label">慣性推薦</div><div class="time-display">20:00</div></div>
+        `;
+
+        document.getElementById('data-table').innerHTML = filtered.slice().reverse().map(d => `
+            <tr><td>${d.date}</td><td>${d.time} 點</td><td>${d.session}</td></tr>
+        `).join('');
+
+        renderChart(filtered);
+    }
+
+    function renderChart(data) {
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        if (trendChart) trendChart.destroy();
+        trendChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(d => d.date),
+                datasets: [{
+                    label: '點數',
+                    data: data.map(d => d.time),
+                    borderColor: '#6f42c1',
+                    borderWidth: 2,
+                    tension: 0.2,
+                    fill: false,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#e83e8c'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { min: 8, max: 24, ticks: { stepSize: 4 } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    function switchSession() {
+        currentSession = document.getElementById('session-selector').value;
+        updateDashboard();
+    }
+
+    init();
+</script>
+</body>
+</html>

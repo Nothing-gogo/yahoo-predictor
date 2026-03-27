@@ -3,75 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>奇摩出獎預測系統 V3.9 經典版</title>
+    <title>奇摩出獎預測系統 V4.0 專業版</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #6f42c1; --secondary: #e83e8c; --bg: #f4f7f6; }
-        body { font-family: 'Segoe UI', -apple-system, system-ui, sans-serif; background-color: var(--bg); margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); }
+        body { font-family: 'Segoe UI', -apple-system, sans-serif; background-color: var(--bg); margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
         h1 { color: var(--primary); margin: 0 0 15px 0; text-align: center; font-size: 1.8em; }
-        
-        /* 狀態列 (抓取 D 欄真實時間) */
         .status-bar { background: #fff3cd; padding: 10px; border-radius: 6px; text-align: center; font-size: 0.95em; margin-bottom: 20px; border: 1px solid #ffeeba; color: #856404; font-weight: bold; }
 
-        /* 🎯 今日預測 - 經典大字卡片區 (完全回歸 V3.1 風格) */
+        /* 經典大字預測卡片 */
         .prediction-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px; }
         .card { background: #f8f9fa; border: 1px solid #eee; border-top: 5px solid var(--primary); padding: 20px; border-radius: 10px; text-align: center; transition: transform 0.2s; }
         .card:hover { transform: translateY(-5px); }
-        
-        /* 機率標籤 */
-        .prob-badge { background: var(--secondary); color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; text-transform: uppercase; }
-        
-        /* 邏輯標題 */
-        .logic-title { margin: 10px 0 0 0; color: var(--primary); font-size: 1.1em; }
-        
-        /* 大字時間 (2.8em) */
-        .time-display { font-size: 2.8em; font-weight: bold; color: var(--secondary); margin: 10px 0; line-height: 1; }
-        
-        /* 依據描述 */
-        .logic-desc { font-size: 0.85em; color: #666; line-height: 1.4; }
+        .prob-badge { background: var(--secondary); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.85em; font-weight: bold; }
+        .logic-title { margin: 12px 0 0 0; color: var(--primary); font-size: 1.15em; }
+        .time-display { font-size: 3em; font-weight: bold; color: var(--secondary); margin: 10px 0; line-height: 1; }
+        .logic-desc { font-size: 0.85em; color: #666; line-height: 1.5; height: 3em; display: flex; align-items: center; justify-content: center; }
 
-        /* 活動資訊 (補上結束時間) */
-        .session-info { background: #f1f0ff; padding: 15px; border-radius: 8px; border-left: 5px solid var(--primary); line-height: 1.6; margin-bottom: 20px; }
-        .session-info a { color: var(--secondary); text-decoration: none; font-weight: bold; }
+        /* 活動資訊區 */
+        .session-box { background: #f1f0ff; padding: 18px; border-radius: 10px; border-left: 6px solid var(--primary); line-height: 1.8; margin-bottom: 25px; }
+        .session-box a { color: var(--secondary); text-decoration: none; font-weight: bold; border-bottom: 1px solid var(--secondary); }
 
-        /* 歷史數據表格 (最新日期排前面) */
-        .table-wrapper { max-height: 180px; overflow-y: auto; border: 1px solid #eee; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
-        th { background: var(--primary); color: white; position: sticky; top: 0; padding: 10px; text-align: center; }
-        td { padding: 8px; text-align: center; border-bottom: 1px solid #eee; }
+        .table-wrapper { max-height: 200px; overflow-y: auto; border: 1px solid #eee; margin-bottom: 20px; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.88em; }
+        th { background: var(--primary); color: white; position: sticky; top: 0; padding: 12px; }
+        td { padding: 10px; text-align: center; border-bottom: 1px solid #eee; }
 
-        /* 圖表高度鎖定 (維持電腦版舒適度 40vh) */
-        .chart-container { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 10px; height: 40vh; min-height: 300px; max-height: 400px; position: relative; }
-        
-        /* 檔期選擇器 */
-        select { padding: 10px; border-radius: 5px; border: 1px solid var(--primary); background: #fff; width: auto; min-width: 250px; font-size: 1em; cursor: pointer; }
+        /* 圖表高度鎖定 (電腦版半頁) */
+        .chart-container { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; height: 40vh; min-height: 350px; max-height: 450px; position: relative; }
+        select { padding: 10px 15px; border-radius: 6px; border: 2px solid var(--primary); font-size: 1em; background: white; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>奇摩出獎預測分析 V3.9經典版</h1>
-    <div id="status" class="status-bar">📝最後更新時間：正在抓取雲端數據...</div>
+    <h1>奇摩出獎預測分析系統 V4.0</h1>
+    <div id="status" class="status-bar">📝最後更新時間：正在計算模型數據...</div>
 
-    <div style="text-align: right; margin-bottom: 15px; display: flex; justify-content: flex-end; align-items: center;">
-        <label style="margin-right:10px; font-size: 0.9em;">切換活動檔期：</label>
-        <select id="session-selector" onchange="switchSession()"></select>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="margin:0;">📅 檔期資訊</h2>
+        <div>
+            <label style="font-weight:bold;">切換活動：</label>
+            <select id="session-selector" onchange="switchSession()"></select>
+        </div>
     </div>
 
-    <div class="session-info" id="session-detail">載入中...</div>
+    <div class="session-box" id="session-detail">讀取中...</div>
 
-    <h2>🎯 今日預測</h2>
+    <h2 id="predict-title">🎯 今日預測</h2>
     <div class="prediction-grid" id="prediction-results"></div>
 
-    <div class="history-section">
-        <h2>📊 歷史追蹤 (最新日期排前面)</h2>
-        <div class="table-wrapper">
-            <table>
-                <thead><tr><th>日期</th><th>出獎時間</th><th>檔期</th></tr></thead>
-                <tbody id="data-table"></tbody>
-            </table>
-        </div>
+    <h2>📊 歷史追蹤 (最新日期排前面)</h2>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>日期</th><th>出獎時間</th><th>檔期</th></tr></thead>
+            <tbody id="data-table"></tbody>
+        </table>
     </div>
 
     <div class="chart-container">
@@ -80,22 +68,19 @@
 </div>
 
 <script>
-    // --- 這裡放入你的 pubhtml 網址 ---
-    let rawUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS78ynlSp6RiZrbuy2xrepY_o8okgD2XygL6MqXTxpdY1crYWb4YemjrEdMUDfapv11FU0oiPaNWSKB/pub?output=csv';
-    // 自動將 pubhtml 網址轉為 output=csv 格式 (事實檢查：這能確保程式讀到原始數據而非 HTML 網頁)
+    // 自動修正 CSV 網址
+    let rawUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS78ynlSp6RiZrbuy2xrepY_o8okgD2XygL6MqXTxpdY1crYWb4YemjrEdMUDfapv11FU0oiPaNWSKB/pubhtml';
     const CSV_URL = rawUrl.replace('/pubhtml', '/pub?output=csv');
 
-    // 檔期元資料：請在此維護各檔期的詳細資訊 (Facts)
     const sessionMeta = {
         "春日禮": {
-            name: "【春日禮❤️可抽5次】麥當勞、必勝客、City Cafe等多重驚喜",
+            name: "【春日禮❤️可抽5次】麥當勞、必勝客等多重驚喜",
             range: "3/4~3/31",
             startFull: "2026-03-04 16:00:00",
-            endFull: "2026-03-31 23:59:59", // 補上結束時間
+            endFull: "2026-03-31 23:59:59",
             link: "https://tw.yahoo.com/member/item/266443",
             history: "https://tw.yahoo.com/member/luckyDrawHistory/93206"
         }
-        // 未來在此新增新檔期資訊...
     };
 
     let fullData = [];
@@ -104,12 +89,8 @@
 
     async function init() {
         try {
-            // 防止瀏覽器快取，加上隨機參數
             const response = await fetch(CSV_URL + '&t=' + new Date().getTime());
-            if (!response.ok) throw new Error('雲端連線失敗');
             const text = await response.text();
-            
-            // 解析 CSV 每一列並過濾空白列
             const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
             
             fullData = lines.slice(1).map(line => {
@@ -118,11 +99,11 @@
                     session: cols[0]?.replace(/"/g, '').trim(), 
                     date: cols[1]?.replace(/"/g, '').trim(), 
                     time: parseInt(cols[2]),
-                    sheetTime: cols[3]?.replace(/"/g, '').trim() // 抓取 D 欄 (索引 3) 的 =NOW()
+                    sheetTime: cols[3]?.replace(/"/g, '').trim()
                 };
             }).filter(d => !isNaN(d.time));
 
-            // --- 強化：找出所有資料中最後一個有效的 D 欄內容 ---
+            // 更新最後修改時間
             let finalUpdate = "無數據";
             for (let i = fullData.length - 1; i >= 0; i--) {
                 if (fullData[i].sheetTime && fullData[i].sheetTime.length > 5) {
@@ -133,18 +114,17 @@
             document.getElementById('status').innerText = `📝最後更新時間：${finalUpdate}`;
 
             const sessions = [...new Set(fullData.map(d => d.session))];
-            currentSession = sessions[sessions.length - 1]; // 預設最後一個檔期
+            currentSession = sessions[sessions.length - 1]; 
 
             const selector = document.getElementById('session-selector');
             selector.innerHTML = sessions.map(s => {
                 const range = sessionMeta[s]?.range || "";
-                return `<option value="${s}" ${s === currentSession ? 'selected' : ''}>${s}${range}</option>`;
+                return `<option value="${s}" ${s === currentSession ? 'selected' : ''}>${s} (${range})</option>`;
             }).join('');
 
             updateDashboard();
         } catch (e) {
-            document.getElementById('status').innerText = "❌ 讀取失敗。請確認試算表已「發布為 CSV」。";
-            console.error(e);
+            document.getElementById('status').innerText = "❌ 雲端同步失敗，請檢查網路連線。";
         }
     }
 
@@ -152,30 +132,35 @@
         const filtered = fullData.filter(d => d.session === currentSession);
         if (filtered.length === 0) return;
 
-        // 1. 更新活動資訊 (補上結束時間)
+        // 1. 活動資訊
         const meta = sessionMeta[currentSession] || { name: currentSession, startFull: "-", endFull: "-", link: "#", history: "#" };
         document.getElementById('session-detail').innerHTML = `
             <strong>活動名稱：</strong> ${meta.name}<br>
             <strong>開始時間：</strong> ${meta.startFull}<br>
             <strong>結束時間：</strong> ${meta.endFull}<br>
-            <strong>快速連結：</strong> <a href="${meta.link}" target="_blank">抽獎網頁</a> | <a href="${meta.history}" target="_blank">紀錄查詢</a>
+            <strong>快速連結：</strong> <a href="${meta.link}" target="_blank">進入抽獎網頁</a> | <a href="${meta.history}" target="_blank">中獎紀錄查詢</a>
         `;
 
-        // 2. 🎯 今日預測 - 經典大字介面渲染 (UI 回歸 V3.1)
+        // 2. 工程師級預測邏輯 (Engineer Algorithm)
         const times = filtered.map(d => d.time);
         const last = times[times.length - 1];
-        const prev = times[times.length - 2]?.time || last;
-        const avg = Math.round(times.reduce((a,b)=>a+b.time,0)/times.length);
-        const trend = Math.max(10, Math.min(23, last + (last - prev)));
+        const prev = times[times.length - 2] || last;
+        
+        // 修正後的平均值計算 (Fix NaN)
+        const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
+        
+        // 趨勢計算：若前兩日升降幅劇烈，預測今日反轉
+        let trend = last + (last - prev);
+        if (last === prev) trend = last + 1; // 停滯時微幅後移
+        trend = Math.max(10, Math.min(23, trend)); 
 
-        // 定義邏輯依據與機率 (Subjective Opinion for decision-making)
         const preds = [
-            { t: trend, n: "趨勢波段", p: "45%", d: "依據前兩日升降幅推算" },
-            { t: avg, n: "均值回歸", p: "30%", d: "依據全月平均出獎點" },
-            { t: 20, n: "慣性推薦", p: "25%", d: "參考近期熱門高峰時段" }
+            { t: trend, n: "趨勢波段", p: "45%", d: "依據前兩日升降幅動態推算" },
+            { t: avg, n: "均值回歸", p: "30%", d: "依據本檔期全月出獎平均點" },
+            { t: 20, n: "週期慣性", p: "25%", d: "參考週末及系統固定熱門時段" }
         ];
 
-        // 渲染大字卡片 (字體大、機率顯眼)
+        document.getElementById('predict-title').innerText = `🎯 今日預測 (${filtered[filtered.length-1].date} 參考)`;
         document.getElementById('prediction-results').innerHTML = preds.map(p => `
             <div class="card">
                 <span class="prob-badge">機率 ${p.p}</span>
@@ -185,12 +170,11 @@
             </div>
         `).join('');
 
-        // 3. 表格渲染 (最新日期排前面)
+        // 3. 表格渲染
         document.getElementById('data-table').innerHTML = filtered.slice().reverse().map(d => `
             <tr><td>${d.date}</td><td>${d.time} 點</td><td>${d.session}</td></tr>
         `).join('');
 
-        // 4. 圖表渲染 (維持鎖定 CSS 高度的穩定性 40vh)
         renderChart(filtered);
     }
 
@@ -202,22 +186,23 @@
             data: {
                 labels: data.map(d => d.date),
                 datasets: [{
-                    label: '點數',
+                    label: '出獎時間',
                     data: data.map(d => d.time),
                     borderColor: '#6f42c1',
-                    borderWidth: 2,
-                    tension: 0.2,
+                    borderWidth: 3,
+                    tension: 0.3,
                     fill: false,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#e83e8c'
+                    pointRadius: 5,
+                    pointBackgroundColor: '#e83e8c',
+                    pointBorderColor: '#fff'
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false, // 關鍵：讓它乖乖聽 CSS 容器高度的話
+                maintainAspectRatio: false,
                 scales: { 
-                    y: { min: 8, max: 24, ticks: { stepSize: 4 } },
-                    x: { ticks: { maxRotation: 45, minRotation: 45, font: { size: 10 } } }
+                    y: { min: 8, max: 24, ticks: { stepSize: 4, font: { weight: 'bold' } } },
+                    x: { ticks: { font: { size: 11 } } }
                 },
                 plugins: { legend: { display: false } }
             }

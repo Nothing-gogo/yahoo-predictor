@@ -3,61 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>奇摩出獎預測系統 V4.5 視覺優化版</title>
+    <title>奇摩出獎預測分析系統 V4.6</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #6f42c1; --secondary: #e83e8c; --bg: #f4f7f6; --clock-green: #166534; --clock-bg: #f0fdf4; }
-        body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", sans-serif; background-color: var(--bg); margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); }
-        h1 { color: var(--primary); margin: 0 0 15px 0; text-align: center; font-size: 1.8em; }
+        /* 顏色定義：深紫色調與活潑綠 */
+        :root { 
+            --primary: #4b208c; /* 深紫色 */
+            --secondary: #e83e8c; 
+            --bg: #f4f7f6; 
+            --clock-green: #166534; 
+            --clock-bg: #f0fdf4; 
+        }
         
-        /* 數位時鐘優化：改為淺綠風格，字體與版面一致 */
-        .clock-bar { background: var(--clock-bg); color: var(--clock-green); padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 25px; border: 1px solid #dcfce7; border-left: 6px solid #22c55e; }
-        #digital-clock { font-size: 1.8em; font-weight: 700; letter-spacing: 1px; }
-        .clock-label { color: #3f6212; font-size: 0.9em; font-weight: bold; margin-bottom: 4px; display: block; opacity: 0.8; }
+        body { 
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", sans-serif; 
+            background-color: var(--bg); 
+            margin: 0; 
+            padding: 20px; 
+        }
 
-        /* 今日預測大字卡片 */
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            background: #fff; 
+            padding: 30px; 
+            border-radius: 15px; 
+            box-shadow: 0 5px 25px rgba(0,0,0,0.08); 
+        }
+
+        /* 標題樣式強化：加大、加粗、加深顏色 */
+        h1 { 
+            color: var(--primary); 
+            margin: 0 0 25px 0; 
+            text-align: center; 
+            font-size: 2.5em; /* 字體加大 */
+            font-weight: 800; /* 字體極粗 */
+            letter-spacing: -1px;
+        }
+        
+        /* 數位時鐘：維持淺綠底深綠字，增加視覺一致性 */
+        .clock-bar { 
+            background: var(--clock-bg); 
+            color: var(--clock-green); 
+            padding: 15px; 
+            border-radius: 10px; 
+            text-align: center; 
+            margin-bottom: 25px; 
+            border: 1px solid #dcfce7; 
+            border-left: 8px solid #22c55e; 
+        }
+        #digital-clock { font-size: 1.8em; font-weight: 700; }
+        .clock-label { color: #3f6212; font-size: 0.9em; font-weight: bold; margin-bottom: 4px; display: block; }
+
+        /* 預測卡片 */
         .prediction-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px; }
-        .card { background: #f8f9fa; border: 1px solid #eee; border-top: 5px solid var(--primary); padding: 20px; border-radius: 10px; text-align: center; transition: transform 0.2s; }
+        .card { 
+            background: #f8f9fa; 
+            border: 1px solid #eee; 
+            border-top: 5px solid var(--primary); 
+            padding: 20px; 
+            border-radius: 10px; 
+            text-align: center; 
+            transition: transform 0.2s; 
+        }
         .card:hover { transform: translateY(-5px); }
         .prob-badge { background: var(--secondary); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.85em; font-weight: bold; }
-        .logic-title { margin: 12px 0 0 0; color: var(--primary); font-size: 1.15em; }
+        .logic-title { margin: 12px 0 0 0; color: var(--primary); font-size: 1.15em; font-weight: bold; }
         .time-display { font-size: 3em; font-weight: bold; color: var(--secondary); margin: 10px 0; line-height: 1; }
         .logic-desc { font-size: 0.85em; color: #666; line-height: 1.5; height: 3em; display: flex; align-items: center; justify-content: center; }
 
-        .session-box { background: #f1f0ff; padding: 18px; border-radius: 10px; border-left: 6px solid var(--primary); line-height: 1.8; margin-bottom: 25px; }
-        .session-box a { color: var(--secondary); text-decoration: none; font-weight: bold; }
+        .session-box { 
+            background: #f5f3ff; 
+            padding: 18px; 
+            border-radius: 10px; 
+            border-left: 6px solid var(--primary); 
+            line-height: 1.8; 
+            margin-bottom: 25px; 
+        }
+        .session-box a { color: var(--primary); text-decoration: none; font-weight: bold; border-bottom: 1px solid var(--primary); }
 
-        .table-wrapper { max-height: 200px; overflow-y: auto; border: 1px solid #eee; margin-bottom: 20px; border-radius: 8px; }
+        .table-wrapper { max-height: 200px; overflow-y: auto; border: 1px solid #eee; margin-bottom: 25px; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.88em; }
         th { background: var(--primary); color: white; position: sticky; top: 0; padding: 12px; }
         td { padding: 10px; text-align: center; border-bottom: 1px solid #eee; }
 
-        .chart-container { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; height: 40vh; min-height: 350px; max-height: 450px; position: relative; }
-        select { padding: 10px 15px; border-radius: 6px; border: 2px solid var(--primary); font-size: 1em; background: white; cursor: pointer; outline: none; }
+        .chart-container { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; height: 40vh; min-height: 350px; }
+        select { padding: 10px 15px; border-radius: 6px; border: 2px solid var(--primary); font-size: 1em; background: white; cursor: pointer; color: var(--primary); font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>奇摩出獎預測分析系統 V4.5</h1>
+    <h1>奇摩出獎預測分析系統</h1>
     
     <div class="clock-bar">
-        <span class="clock-label">中原標準時間 (CST) — 實時同步中</span>
-        <div id="digital-clock">載入中...</div>
+        <span class="clock-label">中原標準時間 (CST) — 實時更新中</span>
+        <div id="digital-clock">載入時間中...</div>
     </div>
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2 style="margin:0;">📅 檔期資訊</h2>
+        <h2 style="margin:0; color: #333;">📅 檔期資訊</h2>
         <select id="session-selector" onchange="switchSession()"></select>
     </div>
 
-    <div class="session-box" id="session-detail">正在獲取雲端資料...</div>
+    <div class="session-box" id="session-detail">同步雲端數據中...</div>
 
-    <h2 id="predict-title">🎯 今日預測</h2>
+    <h2 id="predict-title" style="color: #333;">🎯 今日預測</h2>
     <div class="prediction-grid" id="prediction-results"></div>
 
-    <h2>📊 歷史追蹤 (最新日期排前面)</h2>
+    <h2 style="color: #333;">📊 歷史追蹤 (最新日期排前面)</h2>
     <div class="table-wrapper">
         <table>
             <thead><tr><th>日期</th><th>出獎時間</th><th>檔期</th></tr></thead>
@@ -71,7 +125,7 @@
 </div>
 
 <script>
-    // --- 電子時鐘功能 ---
+    // --- 實時電子時鐘 ---
     function updateClock() {
         const now = new Date();
         const y = now.getFullYear();
@@ -80,13 +134,12 @@
         const hh = String(now.getHours()).padStart(2, '0');
         const mm = String(now.getMinutes()).padStart(2, '0');
         const ss = String(now.getSeconds()).padStart(2, '0');
-        
         document.getElementById('digital-clock').innerText = `西元 ${y}年${m}月${d}日 ${hh}:${mm}:${ss}`;
     }
     setInterval(updateClock, 1000);
     updateClock();
 
-    // --- 數據同步與預測邏輯 ---
+    // --- 資料讀取與預測邏輯 ---
     let rawUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS78ynlSp6RiZrbuy2xrepY_o8okgD2XygL6MqXTxpdY1crYWb4YemjrEdMUDfapv11FU0oiPaNWSKB/pubhtml';
     const CSV_URL = rawUrl.replace('/pubhtml', '/pub?output=csv');
 
@@ -131,7 +184,7 @@
 
             updateDashboard();
         } catch (e) {
-            console.error("無法同步雲端數據");
+            console.error("雲端同步異常");
         }
     }
 
@@ -159,9 +212,9 @@
         trend = Math.max(10, Math.min(23, trend)); 
 
         const preds = [
-            { t: trend, n: "趨勢波段", p: "45%", d: "基於近期波動幅度的反轉推估" },
-            { t: avg, n: "均值回歸", p: "30%", d: "依據全月數據計算之平均平衡點" },
-            { t: 20, n: "週期慣性", p: "25%", d: "參考週末規律與系統保底設定時段" }
+            { t: trend, n: "趨勢波段", p: "45%", d: "分析全月升降趨勢後之反轉預測" },
+            { t: avg, n: "均值回歸", p: "30%", d: "本檔期全月數據之中心加權點" },
+            { t: 20, n: "週期慣性", p: "25%", d: "參考週末規律與系統保底熱點時段" }
         ];
 
         document.getElementById('prediction-results').innerHTML = preds.map(p => `
@@ -188,9 +241,9 @@
             data: {
                 labels: data.map(d => d.date),
                 datasets: [{
-                    label: '出獎時間',
+                    label: '出獎點',
                     data: data.map(d => d.time),
-                    borderColor: '#6f42c1',
+                    borderColor: '#4b208c',
                     borderWidth: 3,
                     tension: 0.3,
                     fill: false,

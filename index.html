@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>奇摩出獎預測系統 V4.2</title>
+    <title>奇摩出獎預測系統 V4.3</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #6f42c1; --secondary: #e83e8c; --bg: #f4f7f6; }
         body { font-family: 'Segoe UI', -apple-system, sans-serif; background-color: var(--bg); margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
         h1 { color: var(--primary); margin: 0 0 15px 0; text-align: center; font-size: 1.8em; }
-        .status-bar { background: #fff3cd; padding: 10px; border-radius: 6px; text-align: center; font-size: 0.95em; margin-bottom: 20px; border: 1px solid #ffeeba; color: #856404; font-weight: bold; }
+        
+        /* 狀態列：顯示 Google 表單真實時間 */
+        .status-bar { background: #d4edda; padding: 12px; border-radius: 6px; text-align: center; font-size: 1em; margin-bottom: 20px; border: 1px solid #c3e6cb; color: #155724; font-weight: bold; }
 
-        /* 🎯 今日預測 - 經典大字卡片區 */
         .prediction-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px; }
         .card { background: #f8f9fa; border: 1px solid #eee; border-top: 5px solid var(--primary); padding: 20px; border-radius: 10px; text-align: center; transition: transform 0.2s; }
         .card:hover { transform: translateY(-5px); }
@@ -21,17 +22,14 @@
         .time-display { font-size: 3em; font-weight: bold; color: var(--secondary); margin: 10px 0; line-height: 1; }
         .logic-desc { font-size: 0.85em; color: #666; line-height: 1.5; height: 3em; display: flex; align-items: center; justify-content: center; }
 
-        /* 活動資訊區 */
         .session-box { background: #f1f0ff; padding: 18px; border-radius: 10px; border-left: 6px solid var(--primary); line-height: 1.8; margin-bottom: 25px; }
         .session-box a { color: var(--secondary); text-decoration: none; font-weight: bold; }
 
-        /* 表格區 */
         .table-wrapper { max-height: 200px; overflow-y: auto; border: 1px solid #eee; margin-bottom: 20px; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.88em; }
         th { background: var(--primary); color: white; position: sticky; top: 0; padding: 12px; }
         td { padding: 10px; text-align: center; border-bottom: 1px solid #eee; }
 
-        /* 圖表區 (40vh 電腦版視覺鎖定) */
         .chart-container { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; height: 40vh; min-height: 350px; max-height: 450px; position: relative; }
         select { padding: 10px 15px; border-radius: 6px; border: 2px solid var(--primary); font-size: 1em; background: white; cursor: pointer; }
     </style>
@@ -39,15 +37,15 @@
 <body>
 
 <div class="container">
-    <h1>奇摩出獎預測分析系統 V4.2</h1>
-    <div id="status" class="status-bar">📝最後更新時間：讀取中...</div>
+    <h1>奇摩出獎預測分析系統 V4.3</h1>
+    <div id="status" class="status-bar">📊 正在同步 Google 表單數據...</div>
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <h2 style="margin:0;">📅 檔期資訊</h2>
         <select id="session-selector" onchange="switchSession()"></select>
     </div>
 
-    <div class="session-box" id="session-detail">載入資料中...</div>
+    <div class="session-box" id="session-detail">載入中...</div>
 
     <h2 id="predict-title">🎯 今日預測</h2>
     <div class="prediction-grid" id="prediction-results"></div>
@@ -66,7 +64,6 @@
 </div>
 
 <script>
-    // 自動修正 CSV 網址 (維持 V4.0 穩定邏輯)
     let rawUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS78ynlSp6RiZrbuy2xrepY_o8okgD2XygL6MqXTxpdY1crYWb4YemjrEdMUDfapv11FU0oiPaNWSKB/pubhtml';
     const CSV_URL = rawUrl.replace('/pubhtml', '/pub?output=csv');
 
@@ -87,6 +84,7 @@
 
     async function init() {
         try {
+            // 加入隨機參數防止快取
             const response = await fetch(CSV_URL + '&t=' + new Date().getTime());
             const text = await response.text();
             const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
@@ -97,19 +95,18 @@
                     session: cols[0]?.replace(/"/g, '').trim(), 
                     date: cols[1]?.replace(/"/g, '').trim(), 
                     time: parseInt(cols[2]),
-                    sheetTime: cols[3]?.replace(/"/g, '').trim()
+                    sheetTime: cols[3]?.replace(/"/g, '').trim() // 這裡是 D 欄
                 };
             }).filter(d => !isNaN(d.time));
 
-            // 更新最後修改時間 (D 欄)
-            let finalUpdate = "無數據";
-            for (let i = fullData.length - 1; i >= 0; i--) {
-                if (fullData[i].sheetTime && fullData[i].sheetTime.length > 5) {
-                    finalUpdate = fullData[i].sheetTime;
-                    break;
-                }
+            // --- 關鍵修正：精準抓取 D2 (全表單第一個資料列的 D 欄) ---
+            let sheetLastUpdate = "無有效數據";
+            if (fullData.length > 0) {
+                // 直接抓取第一筆資料的 sheetTime，因為您在 D2 寫了 =NOW()
+                // CSV 轉換後，D2 的值會存在 fullData[0].sheetTime
+                sheetLastUpdate = fullData[0].sheetTime || "格式不正確";
             }
-            document.getElementById('status').innerText = `📝最後更新時間：${finalUpdate}`;
+            document.getElementById('status').innerText = `✅ 表單最後更新：${sheetLastUpdate}`;
 
             const sessions = [...new Set(fullData.map(d => d.session))];
             currentSession = sessions[sessions.length - 1]; 
@@ -122,7 +119,7 @@
 
             updateDashboard();
         } catch (e) {
-            document.getElementById('status').innerText = "❌ 資料庫連線異常。";
+            document.getElementById('status').innerText = "❌ 無法聯繫 Google 表單，請檢查網路或發布網址。";
         }
     }
 
@@ -130,35 +127,27 @@
         const filtered = fullData.filter(d => d.session === currentSession);
         if (filtered.length === 0) return;
 
-        // 1. 修正後的標題邏輯：直接顯示當前日期
         const now = new Date();
-        const m = now.getMonth() + 1;
-        const d = now.getDate();
-        document.getElementById('predict-title').innerText = `🎯 今日預測（${m}/${d}）`;
+        document.getElementById('predict-title').innerText = `🎯 今日預測（${now.getMonth() + 1}/${now.getDate()}）`;
 
-        // 2. 活動資訊
         const meta = sessionMeta[currentSession] || { name: currentSession, startFull: "-", endFull: "-", link: "#", history: "#" };
         document.getElementById('session-detail').innerHTML = `
             <strong>活動名稱：</strong> ${meta.name}<br>
             <strong>開始時間：</strong> ${meta.startFull}<br>
             <strong>結束時間：</strong> ${meta.endFull}<br>
-            <strong>快速連結：</strong> <a href="${meta.link}" target="_blank">抽獎頁</a> | <a href="${meta.history}" target="_blank">歷史紀錄</a>
+            <strong>快速連結：</strong> <a href="${meta.link}" target="_blank">進入抽獎</a> | <a href="${meta.history}" target="_blank">中獎歷史</a>
         `;
 
-        // 3. 核心預測演算法 (修正加總 NaN 問題)
         const times = filtered.map(item => item.time);
         const last = times[times.length - 1];
         const prev = times[times.length - 2] || last;
-        
-        // 正確計算本檔期全量數據平均值
         const avg = Math.round(times.reduce((acc, val) => acc + val, 0) / times.length);
         
-        // 趨勢計算邏輯：動態位移
         let trend = last + (last - prev);
         trend = Math.max(10, Math.min(23, trend)); 
 
         const preds = [
-            { t: trend, n: "趨勢波段", p: "45%", d: "分析近期升降幅之動態回調" },
+            { t: trend, n: "趨勢波段", p: "45%", d: "分析全月升降幅之動態回調" },
             { t: avg, n: "均值回歸", p: "30%", d: "依據全月出獎歷史平均錨點" },
             { t: 20, n: "週期慣性", p: "25%", d: "系統保底時段與週末歷史熱區" }
         ];
@@ -172,7 +161,6 @@
             </div>
         `).join('');
 
-        // 4. 表格與圖表
         document.getElementById('data-table').innerHTML = filtered.slice().reverse().map(d => `
             <tr><td>${d.date}</td><td>${d.time} 點</td><td>${d.session}</td></tr>
         `).join('');
@@ -188,15 +176,14 @@
             data: {
                 labels: data.map(d => d.date),
                 datasets: [{
-                    label: '出獎時間點',
+                    label: '出獎時間',
                     data: data.map(d => d.time),
                     borderColor: '#6f42c1',
                     borderWidth: 3,
                     tension: 0.3,
                     fill: false,
                     pointRadius: 5,
-                    pointBackgroundColor: '#e83e8c',
-                    pointBorderColor: '#fff'
+                    pointBackgroundColor: '#e83e8c'
                 }]
             },
             options: {

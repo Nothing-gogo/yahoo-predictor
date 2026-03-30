@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>奇摩出獎預測分析系統 V4.8 (全年度預留版)</title>
+    <title>奇摩出獎預測分析系統 V4.9</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #4b208c; --secondary: #e83e8c; --bg: #f4f7f6; --clock-green: #166534; --clock-bg: #f0fdf4; }
@@ -18,14 +18,16 @@
         .logic-title { margin: 12px 0 0 0; color: var(--primary); font-size: 1.15em; font-weight: bold; }
         .time-display { font-size: 3em; font-weight: bold; color: var(--secondary); margin: 10px 0; line-height: 1; }
         .logic-desc { font-size: 0.85em; color: #666; height: 3em; display: flex; align-items: center; justify-content: center; }
-        .session-box { background: #f5f3ff; padding: 18px; border-radius: 10px; border-left: 6px solid var(--primary); line-height: 1.8; margin-bottom: 25px; }
+        .session-box { background: #f5f3ff; padding: 18px; border-radius: 10px; border-left: 6px solid var(--primary); line-height: 1.8; margin-bottom: 25px; font-size: 0.95em; }
         .session-box a { color: var(--primary); font-weight: bold; text-decoration: underline; }
-        .table-wrapper { max-height: 200px; overflow-y: auto; border: 1px solid #eee; margin-bottom: 25px; border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.88em; }
-        th { background: var(--primary); color: white; position: sticky; top: 0; padding: 12px; }
-        td { padding: 10px; text-align: center; border-bottom: 1px solid #eee; }
+        .table-wrapper { max-height: 250px; overflow-y: auto; border: 1px solid #eee; margin-bottom: 25px; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        th { background: var(--primary); color: white; position: sticky; top: 0; padding: 12px; z-index: 10; }
+        td { padding: 12px; text-align: center; border-bottom: 1px solid #eee; }
+        .diff-pos { color: #d00; font-weight: bold; }
+        .diff-neg { color: #008800; font-weight: bold; }
         .chart-container { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; height: 40vh; min-height: 350px; }
-        select { padding: 10px 15px; border-radius: 6px; border: 2px solid var(--primary); font-size: 1em; background: white; color: var(--primary); font-weight: bold; }
+        select { padding: 10px 15px; border-radius: 6px; border: 2px solid var(--primary); font-size: 1em; background: white; color: var(--primary); font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -34,7 +36,7 @@
     <h1>奇摩出獎預測分析系統</h1>
     
     <div class="clock-bar">
-        <span style="font-size: 0.9em; font-weight: bold; opacity: 0.8;">中原標準時間 (CST) — 實時運行</span>
+        <span style="font-size: 0.9em; font-weight: bold; opacity: 0.8;">中原標準時間 (CST)</span>
         <div id="digital-clock">載入中...</div>
     </div>
 
@@ -43,15 +45,22 @@
         <select id="session-selector" onchange="switchSession()"></select>
     </div>
 
-    <div class="session-box" id="session-detail">同步中...</div>
+    <div class="session-box" id="session-detail">同步雲端數據中...</div>
 
     <h2 id="predict-title">🎯 今日預測</h2>
     <div class="prediction-grid" id="prediction-results"></div>
 
-    <h2>📊 歷史追蹤 (本檔獨立數據)</h2>
+    <h2>📊 歷史追蹤 (含前後日時間差)</h2>
     <div class="table-wrapper">
         <table>
-            <thead><tr><th>日期</th><th>出獎時間</th><th>檔期標籤</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>出獎時間</th>
+                    <th>時間差 (正負值)</th>
+                    <th>檔期</th>
+                </tr>
+            </thead>
             <tbody id="data-table"></tbody>
         </table>
     </div>
@@ -72,18 +81,39 @@
 
     const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS78ynlSp6RiZrbuy2xrepY_o8okgD2XygL6MqXTxpdY1crYWb4YemjrEdMUDfapv11FU0oiPaNWSKB/pub?output=csv';
 
-    // --- 預先留好 2026 全年度檔期 ---
     const sessionMeta = {
-        "春日禮": { name: "春日禮 (3月)", range: "3/4~3/31", link: "https://tw.yahoo.com/member/item/266443", history: "https://tw.yahoo.com/member/luckyDrawHistory/93206" },
-        "春日禮Ⅱ": { name: "春日禮Ⅱ (4月)", range: "4/1~5/3", link: "https://tw.yahoo.com/member/item/267861", history: "https://tw.yahoo.com/member/luckyDrawHistory/93225" },
-        "春日禮Ⅲ": { name: "春日禮Ⅲ (5月)", range: "5/4~5/31", link: "#" },
-        "夏日禮Ⅰ": { name: "夏日禮Ⅰ (6月)", range: "6/1~6/30", link: "#" },
-        "夏日禮Ⅱ": { name: "夏日禮Ⅱ (7月)", range: "7/1~7/31", link: "#" },
-        "夏日禮Ⅲ": { name: "夏日禮Ⅲ (8月)", range: "8/1~8/31", link: "#" },
-        "秋日禮Ⅰ": { name: "秋日禮Ⅰ (9月)", range: "9/1~9/30", link: "#" },
-        "秋日禮Ⅱ": { name: "秋日禮Ⅱ (10月)", range: "10/1~10/31", link: "#" },
-        "秋日禮Ⅲ": { name: "秋日禮Ⅲ (11月)", range: "11/1~11/30", link: "#" },
-        "冬日禮Ⅰ": { name: "冬日禮Ⅰ (12月)", range: "12/1~12/31", link: "#" }
+        "春日禮": {
+            name: "【春日禮❤️可抽5次】麥當勞、必勝客等多重驚喜",
+            range: "3/4~3/31",
+            startFull: "2026-03-04 16:00:00",
+            endFull: "2026-03-31 23:59:59",
+            link: "https://tw.yahoo.com/member/item/266443",
+            history: "https://tw.yahoo.com/member/luckyDrawHistory/93206"
+        },
+        "春日禮Ⅱ": {
+            name: "【春日禮Ⅱ❤️可抽5次】摩斯、Mister Donut、City Cafe等多重驚喜",
+            range: "4/1~5/3",
+            startFull: "2026-04-01 14:15:00",
+            endFull: "2026-05-03 23:59:59",
+            link: "https://tw.yahoo.com/member/item/267861",
+            history: "https://tw.yahoo.com/member/luckyDrawHistory/93225"
+        },
+        "春日禮Ⅲ": {
+            name: "【春日禮Ⅲ❤️可抽5次】五月預留檔期",
+            range: "5/4~5/31",
+            startFull: "2026-05-04 00:00:00",
+            endFull: "2026-05-31 23:59:59",
+            link: "#",
+            history: "#"
+        },
+        "夏日禮Ⅰ": {
+            name: "【夏日禮Ⅰ❤️可抽5次】六月預留檔期",
+            range: "6/1~6/30",
+            startFull: "2026-06-01 00:00:00",
+            endFull: "2026-06-30 23:59:59",
+            link: "#",
+            history: "#"
+        }
     };
 
     let fullData = [];
@@ -106,7 +136,6 @@
             }).filter(d => !isNaN(d.time));
 
             const sessions = Object.keys(sessionMeta);
-            // 預設抓取「有資料」的最後一檔，如果都沒資料則抓取最新一檔
             const sessionsWithData = [...new Set(fullData.map(d => d.session))];
             currentSession = sessionsWithData.length > 0 ? sessionsWithData[sessionsWithData.length - 1] : "春日禮Ⅱ";
 
@@ -126,29 +155,30 @@
         document.getElementById('session-detail').innerHTML = `
             <strong>活動名稱：</strong> ${meta.name}<br>
             <strong>有效區間：</strong> ${meta.range}<br>
-            <strong>快速連結：</strong> <a href="${meta.link}" target="_blank">查看紀錄</a> (連結隨官方更新)
+            <strong>開始時間：</strong> ${meta.startFull}<br>
+            <strong>結束時間：</strong> ${meta.endFull}<br>
+            <strong>快速連結：</strong> <a href="${meta.link}" target="_blank">進入抽獎網頁</a> | <a href="${meta.history}" target="_blank">歷史紀錄</a>
         `;
 
         if (filtered.length === 0) {
-            document.getElementById('prediction-results').innerHTML = `<p style='grid-column: 1/4;'>尚未有「${currentSession}」的數據。<br>請在 Google 表單 A 欄填入此標籤開始紀錄。</p>`;
+            document.getElementById('prediction-results').innerHTML = `<p style='grid-column: 1/4;'>尚未有「${currentSession}」的數據。</p>`;
             if(trendChart) trendChart.destroy();
             document.getElementById('data-table').innerHTML = "";
             return;
         }
 
+        // --- 預測邏輯 ---
         const times = filtered.map(item => item.time);
         const last = times[times.length - 1];
         const prev = times[times.length - 2] || last;
         const avg = Math.round(times.reduce((acc, val) => acc + val, 0) / times.length);
         let trend = Math.max(10, Math.min(23, last + (last - prev))); 
 
-        const preds = [
-            { t: trend, n: "趨勢波段", p: "45%", d: "基於本檔近期波動的反轉預測" },
-            { t: avg, n: "均值回歸", p: "30%", d: "本檔獨立數據之中心平衡點" },
+        document.getElementById('prediction-results').innerHTML = [
+            { t: trend, n: "趨勢波段", p: "45%", d: "基於近期波動幅度的反轉預測" },
+            { t: avg, n: "均值回歸", p: "30%", d: "本檔期獨立數據計算之中心平衡點" },
             { t: 20, n: "週期慣性", p: "25%", d: "參考週末規律與系統保底設定" }
-        ];
-
-        document.getElementById('prediction-results').innerHTML = preds.map(p => `
+        ].map(p => `
             <div class="card">
                 <span class="prob-badge">機率 ${p.p}</span>
                 <h3 class="logic-title">${p.n}</h3>
@@ -157,9 +187,28 @@
             </div>
         `).join('');
 
-        document.getElementById('data-table').innerHTML = filtered.slice().reverse().map(d => `
-            <tr><td>${d.date}</td><td>${d.time} 點</td><td>${d.session}</td></tr>
-        `).join('');
+        // --- 歷史追蹤表格與正負值計算 ---
+        let tableHtml = "";
+        for (let i = filtered.length - 1; i >= 0; i--) {
+            const current = filtered[i];
+            const previous = filtered[i - 1];
+            let diffStr = "-";
+            
+            if (previous) {
+                const diff = current.time - previous.time;
+                const sign = diff > 0 ? "+" : "";
+                const diffClass = diff > 0 ? "diff-pos" : (diff < 0 ? "diff-neg" : "");
+                diffStr = `<span class="${diffClass}">${sign}${diff}</span>`;
+            }
+
+            tableHtml += `<tr>
+                <td>${current.date}</td>
+                <td>${current.time} 點</td>
+                <td>${diffStr}</td>
+                <td>${current.session}</td>
+            </tr>`;
+        }
+        document.getElementById('data-table').innerHTML = tableHtml;
 
         renderChart(filtered);
     }
@@ -185,7 +234,13 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: { y: { min: 8, max: 24, ticks: { stepSize: 2, font: { weight: 'bold' } } } },
+                scales: { 
+                    y: { 
+                        min: 8, 
+                        max: 24, 
+                        ticks: { stepSize: 2, font: { weight: 'bold' } } 
+                    } 
+                },
                 plugins: { legend: { display: false } }
             }
         });
